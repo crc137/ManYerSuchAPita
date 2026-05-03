@@ -2,10 +2,24 @@
 
 Next.js middleware + 404 tracker: progressive IP ban for scanners/probers.
 
+## How it works
 
-## Usage
+- Probe paths and suspicious User-Agents are scored 0–100
+- Rules load automatically from GitHub (updated without republishing)
+- 5 hits → YouTube redirect
+- 12 hits → 5h temp ban (KV TTL, auto-expires)
+- Return after ban + 5 hits → permanent Cloudflare Firewall ban
 
-### 1. Create config (`lib/guard.ts`)
+## Setup
+
+### 1. Environment variables
+
+```env
+CF_API_TOKEN=your_cloudflare_api_token
+CF_ZONE_ID=your_zone_id
+```
+
+### 2. Config (`lib/guard.ts`)
 
 ```ts
 import { createMemoryStore, createUpstashStore } from 'coonlink-ManYerSuchAPita';
@@ -21,7 +35,7 @@ export const guardConfig = {
 };
 ```
 
-### 2. Middleware (`middleware.ts`)
+### 3. Middleware (`middleware.ts`)
 
 ```ts
 import { createMiddleware } from 'coonlink-ManYerSuchAPita';
@@ -30,75 +44,56 @@ import { guardConfig } from './lib/guard';
 export const { middleware, config } = createMiddleware(guardConfig);
 ```
 
-### 3. 404 page (`app/not-found.tsx`)
+### 4. 404 page (`app/not-found.tsx`)
 
-```ts
+```tsx
 import { track404 } from 'coonlink-ManYerSuchAPita';
 import { guardConfig } from '@/lib/guard';
 
 export default async function NotFound() {
   await track404(guardConfig);
-  return <div>Page not found</div>;
+  return <div>Not found</div>;
 }
 ```
 
-### 4. Environment variables
+---
 
-```env
-CF_API_TOKEN=your_cloudflare_api_token
-CF_ZONE_ID=your_zone_id
+## CF IP Verification (optional)
 
-# CF IP verification (optional)
-CF_IP_CHECK=1
-CF_IP_CHECK_URL=https://ip-check-perf.radar.cloudflare.com
-NEXT_PUBLIC_CF_IP_CHECK_URL=https://ip-check-perf.radar.cloudflare.com
-```
+Client-side script checks if the browser can reach Cloudflare's IP endpoint.
+If blocked (VPN / extension hiding real IP) → redirect to YouTube.
 
-## How it works
+### 1. Environment variables
 
-- Detects probe paths in middleware
-- Tracks any 404 via `track404()`
-- 5 hits → YouTube redirect
-- 12 hits → 5h temp ban (KV with TTL, auto-expires)
-- Return after ban + 5 hits → permanent CF Firewall ban
-
-Patterns are intentionally conservative to avoid false positives.
-## CF IP Verification (cfIpCheck)
-
-When Cloudflare proxy is active, a client-side script calls `CF_IP_CHECK_URL`
-to verify the real IP is reachable. If the URL is blocked by an extension or
-VPN that hides the real IP from Cloudflare → user is redirected to YouTube.
-
-### Setup
-
-**`.env.local`**
 ```env
 CF_IP_CHECK=1
 CF_IP_CHECK_URL=https://ip-check-perf.radar.cloudflare.com
 NEXT_PUBLIC_CF_IP_CHECK_URL=https://ip-check-perf.radar.cloudflare.com
 ```
 
-**`lib/guard.ts`** — enable the flag:
+### 2. Enable in config (`lib/guard.ts`)
+
 ```ts
 export const guardConfig = {
-  store: createUpstashStore(kv),
   cfIpCheck: (Number(process.env.CF_IP_CHECK) || 0) as 0 | 1,
   cfIpCheckUrl: process.env.CF_IP_CHECK_URL,
-}
+};
 ```
 
-**`app/api/_guard/verify/route.ts`** — mount the verify endpoint:
+### 3. Verify endpoint (`app/api/_guard/verify/route.ts`)
+
 ```ts
-import { createVerifyHandler } from 'coonlink-ManYerSuchAPita'
-import { guardConfig } from '@/lib/guard'
+import { createVerifyHandler } from 'coonlink-ManYerSuchAPita';
+import { guardConfig } from '@/lib/guard';
 
-export const POST = createVerifyHandler(guardConfig)
-export const runtime = 'edge'
+export const POST = createVerifyHandler(guardConfig);
+export const runtime = 'edge';
 ```
 
-**`app/layout.tsx`** — add the client script:
+### 4. Client script (`app/layout.tsx`)
+
 ```tsx
-import { IpCheckScript } from 'coonlink-ManYerSuchAPita/client'
+import { IpCheckScript } from 'coonlink-ManYerSuchAPita/client';
 
 export default function Layout({ children }) {
   return (
@@ -110,16 +105,13 @@ export default function Layout({ children }) {
         )}
       </body>
     </html>
-  )
+  );
 }
 ```
 
 ### How it works
 
 1. Page loads → `IpCheckScript` calls `CF_IP_CHECK_URL` in the browser
-2. **Success** → gets real IP, posts to `/api/_guard/verify` → stored in KV (1h TTL)
-3. **Blocked** (extension / VPN hiding IP from CF) → posts `blocked: true`
-4. Next request → middleware reads session cookie → checks KV → if `blocked` → YouTube
-5. Session stored in KV with 1h TTL, cookie `_gsid` is httpOnly
-
-`cfIpCheck: 0` — feature completely disabled, no overhead.
+2. **Success** → real IP posted to `/api/_guard/verify` → stored in KV (1h TTL)
+3. **Blocked** → posts `blocked: true` → next request redirects to YouTube
+4. Session cookie `_gsid` (httpOnly) ties browser to KV record
