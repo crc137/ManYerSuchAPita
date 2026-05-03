@@ -22,7 +22,7 @@ CF_ZONE_ID=your_zone_id
 ### 2. Config (`lib/guard.ts`)
 
 ```ts
-import { createMemoryStore, createUpstashStore } from 'coonlink-ManYerSuchAPita';
+import { createMemoryStore, createUpstashStore } from 'coonlink-manyersuchapita';
 import { kv } from '@vercel/kv';
 
 export const guardConfig = {
@@ -38,7 +38,7 @@ export const guardConfig = {
 ### 3. Middleware (`middleware.ts`)
 
 ```ts
-import { createMiddleware } from 'coonlink-ManYerSuchAPita';
+import { createMiddleware } from 'coonlink-manyersuchapita';
 import { guardConfig } from './lib/guard';
 
 export const { middleware, config } = createMiddleware(guardConfig);
@@ -47,7 +47,7 @@ export const { middleware, config } = createMiddleware(guardConfig);
 ### 4. 404 page (`app/not-found.tsx`)
 
 ```tsx
-import { track404 } from 'coonlink-ManYerSuchAPita';
+import { track404 } from 'coonlink-manyersuchapita';
 import { guardConfig } from '@/lib/guard';
 
 export default async function NotFound() {
@@ -83,7 +83,7 @@ export const guardConfig = {
 ### 3. Verify endpoint (`app/api/_guard/verify/route.ts`)
 
 ```ts
-import { createVerifyHandler } from 'coonlink-ManYerSuchAPita';
+import { createVerifyHandler } from 'coonlink-manyersuchapita';
 import { guardConfig } from '@/lib/guard';
 
 export const POST = createVerifyHandler(guardConfig);
@@ -93,7 +93,7 @@ export const runtime = 'edge';
 ### 4. Client script (`app/layout.tsx`)
 
 ```tsx
-import { IpCheckScript } from 'coonlink-ManYerSuchAPita/client';
+import { IpCheckScript } from 'coonlink-manyersuchapita/client';
 
 export default function Layout({ children }) {
   return (
