@@ -1,0 +1,37 @@
+{
+  "name": "coonlink-manyersuchapita",
+  "version": "26.1.8",
+  "description": "Next.js middleware: instant perma-ban for IPs whose first request is 4xx",
+  "homepage": "https://dev.coonlink.com",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "peerDependencies": {
+    "next": ">=16.0.0",
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "next": "^16.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "~6.0.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
