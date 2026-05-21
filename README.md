@@ -22,9 +22,10 @@ export const guardConfig = {
     ? createUpstashStore(kv)
     : createMemoryStore(),
 
-  // optional: Cloudflare perma-ban
-  cfApiToken: process.env.CF_API_TOKEN,
-  cfZoneId: process.env.CF_ZONE_ID,
+  // optional: Cloudflare perma-ban (account-level blocks all domains in the account)
+  cfApiToken:   process.env.CF_API_TOKEN,
+  cfAccountId:  process.env.CF_ACCOUNT_ID,   // preferred — account-wide ban
+  cfZoneId:     process.env.CF_ZONE_ID,       // fallback — single domain only
 };
 ```
 
