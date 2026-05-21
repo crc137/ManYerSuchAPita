@@ -3,7 +3,7 @@
 
  ▄█▄    ████▄ ████▄    ▄   ██▄   ▄███▄      ▄
  █▀ ▀▄  █   █ █   █     █  █  █  █▀   ▀      █
- █   ▀  █   █ █   █ ██   █ █   █ ██▄▄   █     █
+ █   ▄  █   █ █   █ ██   █ █   █ ██▄▄   █     █
  █▄  ▄▀ ▀████ ▀████ █ █  █ █  █  █▄   ▄▀ █    █
  ▀███▀              █  █ █ ███▀  ▀███▀    █  █
                     █   ██                 █▐
@@ -18,6 +18,12 @@ export function normalizeIp(ip: string): string {
 
   const groups = expanded.split(':');
   return groups.slice(0, 4).join(':') + '::/64';
+}
+
+export function exactIp(ip: string): string {
+  if (!ip.includes(':')) return ip;
+  const expanded = expandIPv6(ip.split('%')[0]);
+  return expanded ?? ip;
 }
 
 function expandIPv6(ip: string): string | null {

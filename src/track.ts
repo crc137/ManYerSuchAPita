@@ -11,45 +11,66 @@
 */
 
 import { headers } from "next/headers"
-import { normalizeIp } from "./ip.js"
-import { hasSeen, markSeen, permBan } from "./ban.js"
+import { exactIp, normalizeIp } from "./ip.js"
+import { hasSeen, markSeen, permBan, tempBan } from "./ban.js"
 import { isInChallenge, setChallenge } from "./challenge.js"
+import { classifyProbe } from "./probe.js"
 import type { GuardConfig } from "./types.js"
 
 export type TrackResult = 'ok' | 'banned' | 'challenged';
 
-async function getIp(): Promise<string> {
+async function getIps(): Promise<{ exact: string; subnet: string } | null> {
   const h = await headers();
-  const raw = h.get('cf-connecting-ip') ?? h.get('x-forwarded-for')?.split(',')[0].trim() ?? '0.0.0.0';
-  return normalizeIp(raw);
+  const raw =
+    h.get('cf-connecting-ip') ??
+    h.get('x-forwarded-for')?.split(',')[0].trim() ??
+    null;
+  if (!raw) return null;
+  return { exact: exactIp(raw), subnet: normalizeIp(raw) };
+}
+
+function isAllowed(exact: string, config: GuardConfig): boolean {
+  return (config.allowedIps ?? []).some(a =>
+    a.includes(':') ? exactIp(a) === exact : a === exact
+  );
 }
 
 export async function trackSuccess(config: GuardConfig): Promise<void> {
-  const ip = await getIp();
-  if (ip === '0.0.0.0') return;
-  if (config.allowedIps?.some(a => normalizeIp(a) === ip)) return;
+  const ips = await getIps();
+  if (!ips) return;
+  if (isAllowed(ips.exact, config)) return;
 
-  if (!await hasSeen(ip, config.store)) {
-    await markSeen(ip, config.store);
+  if (!await hasSeen(ips.exact, config.store)) {
+    await markSeen(ips.exact, config.store);
   }
 }
 
 export async function trackFail(config: GuardConfig): Promise<TrackResult> {
-  const ip = await getIp();
-  if (ip === '0.0.0.0') return 'ok';
-  if (config.allowedIps?.some(a => normalizeIp(a) === ip)) return 'ok';
+  const ips = await getIps();
+  if (!ips) return 'ok';
+  if (isAllowed(ips.exact, config)) return 'ok';
 
-  if (!await hasSeen(ip, config.store)) {
+  if (!await hasSeen(ips.exact, config.store)) {
+    const h = await headers();
+    const pathname = h.get('x-pathname') ?? h.get('x-invoke-path') ?? '';
+    const probe = classifyProbe(pathname);
+
+    if (probe === 'instant') {
+      await permBan(ips.subnet, `Instant ban: ${pathname}`, config, 'probe');
+      return 'banned';
+    }
+    if (probe === 'high') {
+      await tempBan(ips.subnet, `Probe path: ${pathname}`, config, 'probe');
+      return 'banned';
+    }
+
     if (config.challengeMode) {
-      if (!await isInChallenge(ip, config.store)) {
-        await setChallenge(ip, config.store);
+      if (!await isInChallenge(ips.exact, config.store)) {
+        await setChallenge(ips.exact, config.store);
       }
       return 'challenged';
     }
-    const h = await headers();
-    const pathname = h.get('x-pathname') ?? h.get('x-invoke-path') ?? '(unknown)';
-    await permBan(ip, `First request was 4xx: ${pathname}`, config, 'probe');
-    return 'banned';
+    await markSeen(ips.exact, config.store);
   }
   return 'ok';
 }

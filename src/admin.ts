@@ -11,7 +11,7 @@
 */
 
 import { NextRequest, NextResponse } from "next/server"
-import { normalizeIp } from "./ip.js"
+import { exactIp, normalizeIp } from "./ip.js"
 import { getBanRecord, hasSeen, permBan, unban } from "./ban.js"
 import { isInChallenge } from "./challenge.js"
 import type { GuardConfig } from "./types.js"
@@ -36,16 +36,17 @@ export function createAdminHandler(config: GuardConfig) {
         return NextResponse.json({ error: 'Missing ?ip= parameter' }, { status: 400 });
       }
 
-      const ip = normalizeIp(rawIp);
+      const subnet = normalizeIp(rawIp);
+      const exact  = exactIp(rawIp);
       const [ban, seen, challenged] = await Promise.all([
-        getBanRecord(ip, config.store),
-        hasSeen(ip, config.store),
-        isInChallenge(ip, config.store),
+        getBanRecord(subnet, config.store),
+        hasSeen(exact, config.store),
+        isInChallenge(exact, config.store),
       ]);
 
       const state = ban ? ban.tier === 'soft' ? 'soft_banned' : ban.tier === 'temp' ? 'temp_banned' : 'banned' : challenged ? 'challenged' : seen ? 'seen' : 'unseen';
 
-      return NextResponse.json({ ip, state, ban, seen, challenged });
+      return NextResponse.json({ ip: rawIp, subnet, state, ban, seen, challenged });
     },
 
     async POST(request: NextRequest): Promise<NextResponse> {
@@ -62,7 +63,7 @@ export function createAdminHandler(config: GuardConfig) {
 
       switch (body.action) {
         case 'unban':
-          await unban(ip, config.store);
+          await unban(ip, config);
           return NextResponse.json({ ok: true, ip, action: 'unban' });
 
         case 'ban': {

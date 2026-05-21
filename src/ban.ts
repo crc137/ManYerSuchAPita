@@ -12,7 +12,11 @@
 
 import type { BanRecord, BanTier, GuardConfig, ScannerStore } from "./types.js"
 
-const TIER_TTL: Record<BanTier, number> = { soft: 5 * 60, temp: 24 * 3600, perm: 365 * 86400 };
+const TIER_TTL: Record<BanTier, number> = {
+  soft: 5 * 60,
+  temp: 24 * 3600,
+  perm: 365 * 86400,
+};
 
 const SEEN_TTL = 86400 * 30;
 
@@ -38,6 +42,17 @@ export async function markSeen(ip: string, store: ScannerStore): Promise<void> {
   await store.set(seenKey(ip), '1', SEEN_TTL);
 }
 
+export async function tempBan(
+  ip: string,
+  reason: string,
+  config: GuardConfig,
+  source = 'middleware',
+): Promise<void> {
+  const record: BanRecord = { reason, createdAt: Date.now(), source, tier: 'temp' };
+  await config.store.set(banKey(ip), JSON.stringify(record), TIER_TTL.temp);
+  await cfBan(ip, reason, config);
+}
+
 export async function permBan(
   ip: string,
   reason: string,
@@ -49,10 +64,12 @@ export async function permBan(
   await cfBan(ip, reason, config);
 }
 
-export async function unban(ip: string, store: ScannerStore): Promise<void> {
+export async function unban(ip: string, config: GuardConfig): Promise<void> {
+  const ruleId = await config.store.get(`guard:cfban:${ip}`);
   await Promise.all([
-    store.del(banKey(ip)),
-    store.del(`guard:cfban:${ip}`),
+    config.store.del(banKey(ip)),
+    config.store.del(`guard:cfban:${ip}`),
+    ruleId ? cfUnban(ruleId, config) : Promise.resolve(),
   ]);
 }
 
@@ -63,7 +80,9 @@ async function cfBan(ip: string, notes: string, config: GuardConfig): Promise<vo
   const already = await config.store.get(`guard:cfban:${ip}`);
   if (already) return;
 
-  const endpoint = config.cfAccountId ? `https://api.cloudflare.com/client/v4/accounts/${config.cfAccountId}/firewall/access_rules/rules` : `https://api.cloudflare.com/client/v4/zones/${config.cfZoneId}/firewall/access_rules/rules`;
+  const endpoint = config.cfAccountId
+    ? `https://api.cloudflare.com/client/v4/accounts/${config.cfAccountId}/firewall/access_rules/rules`
+    : `https://api.cloudflare.com/client/v4/zones/${config.cfZoneId}/firewall/access_rules/rules`;
 
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -78,8 +97,25 @@ async function cfBan(ip: string, notes: string, config: GuardConfig): Promise<vo
     }),
   });
 
-  const json = (await res.json()) as { success: boolean };
-  if (json.success) {
-    await config.store.set(`guard:cfban:${ip}`, '1', TIER_TTL.perm);
+  const json = (await res.json()) as { success: boolean; result?: { id: string } };
+  if (json.success && json.result?.id) {
+    await config.store.set(`guard:cfban:${ip}`, json.result.id, TIER_TTL.perm);
   }
+}
+
+async function cfUnban(ruleId: string, config: GuardConfig): Promise<void> {
+  if (!config.cfApiToken) return;
+  if (!config.cfAccountId && !config.cfZoneId) return;
+
+  const endpoint = config.cfAccountId
+    ? `https://api.cloudflare.com/client/v4/accounts/${config.cfAccountId}/firewall/access_rules/rules/${ruleId}`
+    : `https://api.cloudflare.com/client/v4/zones/${config.cfZoneId}/firewall/access_rules/rules/${ruleId}`;
+
+  await fetch(endpoint, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${config.cfApiToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
 }
