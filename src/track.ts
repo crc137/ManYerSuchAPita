@@ -15,6 +15,7 @@ import { exactIp, normalizeIp } from "./ip.js"
 import { hasSeen, markSeen, permBan, tempBan } from "./ban.js"
 import { isInChallenge, setChallenge } from "./challenge.js"
 import { classifyProbe } from "./probe.js"
+import { withLock } from "./lock.js"
 import type { GuardConfig } from "./types.js"
 
 export type TrackResult = 'ok' | 'banned' | 'challenged';
@@ -50,27 +51,34 @@ export async function trackFail(config: GuardConfig): Promise<TrackResult> {
   if (!ips) return 'ok';
   if (isAllowed(ips.exact, config)) return 'ok';
 
-  if (!await hasSeen(ips.exact, config.store)) {
-    const h = await headers();
-    const pathname = h.get('x-pathname') ?? h.get('x-invoke-path') ?? '';
-    const probe = classifyProbe(pathname);
+  const doCheck = async (): Promise<TrackResult> => {
+    if (!await hasSeen(ips.exact, config.store)) {
+      const h = await headers();
+      const pathname = h.get('x-pathname') ?? h.get('x-invoke-path') ?? '';
+      const probe = classifyProbe(pathname);
 
-    if (probe === 'instant') {
-      await permBan(ips.subnet, `Instant ban: ${pathname}`, config, 'probe');
-      return 'banned';
-    }
-    if (probe === 'high') {
-      await tempBan(ips.subnet, `Probe path: ${pathname}`, config, 'probe');
-      return 'banned';
-    }
-
-    if (config.challengeMode) {
-      if (!await isInChallenge(ips.exact, config.store)) {
-        await setChallenge(ips.exact, config.store);
+      if (probe === 'instant') {
+        await permBan(ips.subnet, `Instant ban: ${pathname}`, config, 'probe');
+        return 'banned';
       }
-      return 'challenged';
+      if (probe === 'high') {
+        await tempBan(ips.subnet, `Probe path: ${pathname}`, config, 'probe');
+        return 'banned';
+      }
+
+      if (config.challengeMode) {
+        if (!await isInChallenge(ips.exact, config.store)) {
+          await setChallenge(ips.exact, config.store);
+        }
+        return 'challenged';
+      }
+      await markSeen(ips.exact, config.store);
     }
-    await markSeen(ips.exact, config.store);
+    return 'ok';
+  };
+
+  if (config.redis) {
+    return withLock(`guard:track-lock:${ips.subnet}`, config.redis, doCheck, 'ok');
   }
-  return 'ok';
+  return doCheck();
 }

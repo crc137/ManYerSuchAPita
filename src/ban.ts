@@ -10,6 +10,7 @@
                                            ▐
 */
 
+import { withLock } from "./lock.js"
 import type { BanRecord, BanTier, GuardConfig, ScannerStore } from "./types.js"
 
 const TIER_TTL: Record<BanTier, number> = {
@@ -77,29 +78,37 @@ async function cfBan(ip: string, notes: string, config: GuardConfig): Promise<vo
   if (!config.cfApiToken) return;
   if (!config.cfAccountId && !config.cfZoneId) return;
 
-  const already = await config.store.get(`guard:cfban:${ip}`);
-  if (already) return;
-
   const endpoint = config.cfAccountId
     ? `https://api.cloudflare.com/client/v4/accounts/${config.cfAccountId}/firewall/access_rules/rules`
     : `https://api.cloudflare.com/client/v4/zones/${config.cfZoneId}/firewall/access_rules/rules`;
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.cfApiToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      mode: 'block',
-      configuration: { target: 'ip', value: ip },
-      notes,
-    }),
-  });
+  const doWork = async () => {
+    const already = await config.store.get(`guard:cfban:${ip}`);
+    if (already) return;
 
-  const json = (await res.json()) as { success: boolean; result?: { id: string } };
-  if (json.success && json.result?.id) {
-    await config.store.set(`guard:cfban:${ip}`, json.result.id, TIER_TTL.perm);
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.cfApiToken!}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mode: 'block',
+        configuration: { target: 'ip', value: ip },
+        notes,
+      }),
+    });
+
+    const json = (await res.json()) as { success: boolean; result?: { id: string } };
+    if (json.success && json.result?.id) {
+      await config.store.set(`guard:cfban:${ip}`, json.result.id, TIER_TTL.perm);
+    }
+  };
+
+  if (config.redis) {
+    await withLock(`guard:cfban-lock:${ip}`, config.redis, doWork, undefined);
+  } else {
+    await doWork();
   }
 }
 

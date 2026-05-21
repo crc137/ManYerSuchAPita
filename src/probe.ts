@@ -20,9 +20,11 @@ export const PROBE_INSTANT_FRAGMENTS: readonly string[] = [
   '/credentials.json', '/serviceaccountkey', '/service-account.json',
   '/firebase-service-account.json', '/google-service-account.json',
   '/terraform.tfstate', '/infra/terraform.tfstate',
-  '/c99.php', '/r57.php', '/b374k.php', '/wso.php', '/alfa.php',
+  '/c99.php', '/r57.php', '/r57', '/b374k.php', '/wso.php', '/alfa.php',
   '/shell.php', '/shell.sh', '/cmd.aspx', '/cmd.jsp',
   '/v1/sys/init', '/v1/acl/bootstrap',
+  '/cosign.key', '/putty.reg',
+  '/htpasswd', '/passwd',
 ];
 
 export const PROBE_INSTANT_EXACT: ReadonlySet<string> = new Set(['/env']);
@@ -100,6 +102,28 @@ export const PROBE_HIGH_FRAGMENTS: readonly string[] = [
   '/remote/fgt_lang', '/admin/config', '/graphiql', '/graphql/console',
   '/servers/save.cgi', '/servers/link.cgi', '/server/config/', '/src/config/',
   '/dnscfg.cgi', '/sysinfo.cgi', '/software/update.cgi', '/software/install-updates',
+  '/.cvs', '/.cvsignore', '/.forward', '/.history', '/.hta', '/.listing', '/.listings',
+  '/access_log', '/error_log', '/exception_log', '/spamlog.log',
+  '/development.log', '/production.log',
+  '/tomcat', '/resin', '/resin-admin', '/struts', '/turbine', '/jrun',
+  '/jmxsoapadapter', '/nagios', '/ganglia', '/directadmin', '/plesk-stat',
+  '/hpwebjetadmin', '/iisadmin', '/weblogic', '/websphere',
+  '/radmind', '/lotus_domino_admin', '/scgi-bin', '/cgi-bin2',
+  '/_admin', '/_backup', '/_config', '/_private', '/_db_backups',
+  '/admincp', '/adminpanel', '/adminsql', '/fileadmin', '/loginadmin',
+  '/shopadmin', '/siteadmin', '/sshadmin', '/webadmin', '/openvpnadmin',
+  '/super-admin', '/sys-admin', '/system-admin', '/sysadmin',
+  '/ezsqliteadmin', '/dh_phpmyadmin', '/phpadmin', '/phpsqliteadmin',
+  '/wbsadmin', '/vsadmin', '/vmailadmin', '/bbadmin', '/cmsadmin',
+  '/newsadmin', '/navsiteadmin', '/newadmin', '/ur-admin', '/vadmind',
+  '/~admin', '/~administrator', '/~sysadmin',
+  '/dump', '/mysqldumper', '/vdsbackup', '/stackdump', '/autobackup', '/dmsdump',
+  '/cosign.pub', '/putty', '/awstats.conf', '/ui_config.properties',
+  '/manifest.mf', '/vite.config.js', '/vite.config.ts',
+  '/webpack.manifest.json', '/npm-shrinkwrap.json', '/ws_ftp.log',
+  '/server-inf', '/install.mysql', '/install.pgsql',
+  '/debug', '/viewsource', '/remotetracer',
+  '/privateassets', '/privatemsg', '/download_private',
 ];
 
 export type ProbeClass = 'instant' | 'high' | null;
@@ -125,3 +149,4 @@ export function classifyProbe(pathname: string): ProbeClass {
   if (HIGH_RE.test(p)) return 'high';
   return null;
 }
+

@@ -12,6 +12,11 @@
 
 export type BanTier = 'soft' | 'temp' | 'perm';
 
+export interface LockableRedis {
+  eval(script: string, keys: string[], args: (string | number)[]): Promise<unknown>;
+  set(key: string, value: string, opts: { nx: boolean; px: number }): Promise<unknown>;
+}
+
 export interface BanRecord {
   reason: string;
   createdAt: number;
@@ -27,6 +32,7 @@ export interface ScannerStore {
 
 export interface GuardConfig {
   store: ScannerStore;
+  redis?: LockableRedis;
   allowedIps?: string[];
   challengeMode?: boolean;
   challengeUrl?: string;

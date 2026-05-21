@@ -1,6 +1,6 @@
 {
   "name": "coonlink-manyersuchapita",
-  "version": "26.1.8",
+  "version": "26.1.11",
   "description": "Next.js middleware: instant perma-ban for IPs whose first request is 4xx",
   "homepage": "https://dev.coonlink.com",
   "license": "MIT",
@@ -25,6 +25,9 @@
     "next": ">=16.0.0",
     "react": ">=18.0.0"
   },
+  "dependencies": {
+    "@upstash/lock": "*"
+  },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "next": "^16.0.0",
@@ -33,5 +36,10 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "@upstash/lock": {
+      "typescript": "~6.0.2"
+    }
   }
 }
