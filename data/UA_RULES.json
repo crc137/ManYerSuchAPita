@@ -1,12 +1,12 @@
 [
-  { "pattern": "curl", "flags": "i", "score": 25 },
-  { "pattern": "wget", "flags": "i", "score": 25 },
-  { "pattern": "python", "flags": "i", "score": 20 },
-  { "pattern": "go-http", "flags": "i", "score": 20 },
-  { "pattern": "nikto", "flags": "i", "score": 50 },
-  { "pattern": "sqlmap", "flags": "i", "score": 50 },
-  { "pattern": "nmap", "flags": "i", "score": 50 },
-  { "pattern": "masscan", "flags": "i", "score": 50 },
-  { "pattern": "nuclei", "flags": "i", "score": 50 },
-  { "pattern": "zgrab", "flags": "i", "score": 50 }
-]
+    { "pattern": "curl", "flags": "i", "score": 25 },
+    { "pattern": "wget", "flags": "i", "score": 25 },
+    { "pattern": "python", "flags": "i", "score": 20 },
+    { "pattern": "go-http", "flags": "i", "score": 20 },
+    { "pattern": "nikto", "flags": "i", "score": 50 },
+    { "pattern": "sqlmap", "flags": "i", "score": 50 },
+    { "pattern": "nmap", "flags": "i", "score": 50 },
+    { "pattern": "masscan", "flags": "i", "score": 50 },
+    { "pattern": "nuclei", "flags": "i", "score": 50 },
+    { "pattern": "zgrab", "flags": "i", "score": 50 }
+  ]
