@@ -22,6 +22,7 @@ export const PROBE_INSTANT_FRAGMENTS: readonly string[] = [
   '/terraform.tfstate', '/infra/terraform.tfstate',
   '/c99.php', '/r57.php', '/r57', '/b374k.php', '/wso.php', '/alfa.php',
   '/shell.php', '/shell.sh', '/cmd.aspx', '/cmd.jsp',
+  '/wlwmanifest.xml',
   '/v1/sys/init', '/v1/acl/bootstrap',
   '/cosign.key', '/putty.reg',
   '/htpasswd', '/passwd',
@@ -136,17 +137,32 @@ function buildFragmentRegex(fragments: readonly string[]): RegExp {
 const INSTANT_RE = buildFragmentRegex(PROBE_INSTANT_FRAGMENTS);
 const HIGH_RE    = buildFragmentRegex(PROBE_HIGH_FRAGMENTS);
 
+// Regex patterns for probes that can't be expressed as simple substrings.
+const HIGH_PATTERN_RE: readonly RegExp[] = [
+  // Any executable file planted under /.well-known/ — legitimate resources there are never scripts.
+  /\/\.well-known\/[^/]+\.(php\d?|asp[x]?|jsp[x]?|cgi|pl|py|rb|sh)$/,
+];
+
 function normalizePath(pathname: string): string {
   try { return decodeURIComponent(pathname).toLowerCase(); }
   catch { return pathname.toLowerCase(); }
 }
 
-export function classifyProbe(pathname: string): ProbeClass {
+export function classifyProbe(pathname: string, search?: string): ProbeClass {
   const p = normalizePath(pathname);
   if (PROBE_INSTANT_EXACT.has(p)) return 'instant';
   if (/\.\.\//.test(p)) return 'instant';
   if (INSTANT_RE.test(p)) return 'instant';
   if (HIGH_RE.test(p)) return 'high';
+  if (HIGH_PATTERN_RE.some(re => re.test(p))) return 'high';
+
+  if (search) {
+    const q = normalizePath(search);
+    if (/\.\.\/|\.\.%2f|\.\.%5c/i.test(q)) return 'instant';
+    if (INSTANT_RE.test(q)) return 'instant';
+    if (HIGH_RE.test(q)) return 'high';
+  }
+
   return null;
 }
 

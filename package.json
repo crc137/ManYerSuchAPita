@@ -1,6 +1,6 @@
 {
   "name": "coonlink-manyersuchapita",
-  "version": "26.1.11",
+  "version": "26.1.13",
   "description": "Next.js middleware: instant perma-ban for IPs whose first request is 4xx",
   "homepage": "https://dev.coonlink.com",
   "license": "MIT",
