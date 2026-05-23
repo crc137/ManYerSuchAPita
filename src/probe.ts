@@ -141,6 +141,8 @@ const HIGH_PATTERN_RE: readonly RegExp[] = [
   /\/\.well-known\/[^/]+\.(php\d?|asp[x]?|jsp[x]?|cgi|pl|py|rb|sh)$/,
 ];
 
+const XSS_RE = /<script[\s>]|<\/script|javascript\s*:|on(?:error|load|click|mouse\w+|focus|blur|key\w+|input|change|submit|reset|select|resize|scroll|unload|abort|contextmenu|dblclick|drag\w*|drop|copy|cut|paste|pointer\w+|touch\w*|wheel|animat\w+|transit\w+|toggle|message|open|close|beforeunload)\s*=|alert\s*\(|confirm\s*\(|prompt\s*\(|document\s*\.|window\s*\.|eval\s*\(|expression\s*\(|vbscript\s*:/i;
+
 function normalizePath(pathname: string): string {
   try { return decodeURIComponent(pathname).toLowerCase(); }
   catch { return pathname.toLowerCase(); }
@@ -151,6 +153,7 @@ export function classifyProbe(pathname: string, search?: string): ProbeClass {
   if (PROBE_INSTANT_EXACT.has(p)) return 'instant';
   if (/\.\.\//.test(p)) return 'instant';
   if (INSTANT_RE.test(p)) return 'instant';
+  if (XSS_RE.test(p)) return 'instant';
   if (HIGH_RE.test(p)) return 'high';
   if (HIGH_PATTERN_RE.some(re => re.test(p))) return 'high';
 
@@ -158,6 +161,7 @@ export function classifyProbe(pathname: string, search?: string): ProbeClass {
     const q = normalizePath(search);
     if (/\.\.\/|\.\.%2f|\.\.%5c/i.test(q)) return 'instant';
     if (INSTANT_RE.test(q)) return 'instant';
+    if (XSS_RE.test(q)) return 'instant';
     if (HIGH_RE.test(q)) return 'high';
   }
 
