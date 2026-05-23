@@ -137,9 +137,7 @@ function buildFragmentRegex(fragments: readonly string[]): RegExp {
 const INSTANT_RE = buildFragmentRegex(PROBE_INSTANT_FRAGMENTS);
 const HIGH_RE    = buildFragmentRegex(PROBE_HIGH_FRAGMENTS);
 
-// Regex patterns for probes that can't be expressed as simple substrings.
 const HIGH_PATTERN_RE: readonly RegExp[] = [
-  // Any executable file planted under /.well-known/ — legitimate resources there are never scripts.
   /\/\.well-known\/[^/]+\.(php\d?|asp[x]?|jsp[x]?|cgi|pl|py|rb|sh)$/,
 ];
 
